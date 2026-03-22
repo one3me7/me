@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dance Rush</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  --bg:#08080f;
+  --panel:rgba(15,12,30,0.85);
+  --border:rgba(160,130,255,0.2);
+  --accent:#b090ff;
+  --gold:#ffd060;
+  --green:#3fffa0;
+  --blue:#40c8ff;
+  --red:#ff4060;
+  --text:#d0c8ff;
+  --muted:#4848a0;
+  --hd:'Orbitron',sans-serif;
+  --mono:'Share Tech Mono',monospace;
+}
+
+html,body{
+  width:100%;height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--mono);
+  overflow:hidden;
+  user-select:none;
+  -webkit-user-select:none;
+}
+
+/* ──────────────── SCREENS ──────────────── */
+.screen{
+  position:fixed;inset:0;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.screen.on{display:flex;}
+
+/* ──────────────── START ──────────────── */
+#s-start{
+  gap:1.4rem;
+  background:var(--bg);
+}
+#s-start::before{
+  content:'';position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(0deg,transparent,transparent 56px,rgba(100,80,220,.05) 56px,rgba(100,80,220,.05) 57px),
+    repeating-linear-gradient(90deg,transparent,transparent 56px,rgba(100,80,220,.05) 56px,rgba(100,80,220,.05) 57px);
+  pointer-events:none;
+}
+
+.logo{
+  font-family:var(--hd);
+  font-size:clamp(2rem,8vw,5rem);
+  font-weight:900;
+  letter-spacing:.15em;
+  color:var(--accent);
+  text-shadow:0 0 40px rgba(176,144,255,.3);
+  line-height:1;
+}
+.logo-sub{
+  font-size:clamp(9px,1.4vw,13px);
+  letter-spacing:.35em;
+  color:var(--muted);
+  margin-top:.3rem;
+  text-align:center;
+}
+
+.card{
+  background:rgba(160,130,255,.05);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:1.4rem 2rem;
+  max-width:460px;
+  width:88%;
+  text-align:center;
+}
+.card h3{
+  font-family:var(--hd);
+  font-size:10px;
+  letter-spacing:.3em;
+  color:var(--accent);
+  margin-bottom:.9rem;
+}
+.card p{
+  font-size:clamp(11px,1.6vw,13px);
+  color:#7070b8;
+  line-height:1.85;
+}
+
+.btn{
+  font-family:var(--hd);
+  font-size:clamp(11px,1.5vw,13px);
+  font-weight:700;
+  letter-spacing:.3em;
+  padding:.9em 3em;
+  border:1.5px solid var(--accent);
+  background:transparent;
+  color:var(--accent);
+  border-radius:7px;
+  cursor:pointer;
+  text-transform:uppercase;
+  transition:background .18s,color .18s,transform .1s;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn:hover{background:var(--accent);color:var(--bg);}
+.btn:active{transform:scale(.96);}
+.btn.g{border-color:var(--green);color:var(--green);}
+.btn.g:hover{background:var(--green);color:var(--bg);}
+
+/* ──────────────── GAME ──────────────── */
+#s-game{
+  position:fixed;inset:0;
+  flex-direction:row;
+  align-items:stretch;
+  background:#000;
+}
+
+/* Camera side */
+#cam-area{
+  position:relative;
+  flex:1;
+  overflow:hidden;
+  min-width:0;
+}
+#vid{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  object-fit:cover;
+  transform:scaleX(-1);
+  opacity:.72;
+}
+#pose-cv{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  transform:scaleX(-1);
+}
+
+/* Countdown overlay */
+#countdown{
+  position:absolute;inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.55);
+  z-index:50;
+}
+#countdown-num{
+  font-family:var(--hd);
+  font-size:clamp(5rem,20vw,10rem);
+  font-weight:900;
+  color:var(--accent);
+  text-shadow:0 0 60px rgba(176,144,255,.5);
+  animation:pulse .8s ease-in-out infinite alternate;
+}
+@keyframes pulse{from{opacity:.6;transform:scale(.9);}to{opacity:1;transform:scale(1.05);}}
+
+/* judgment flash */
+#judge{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  font-family:var(--hd);
+  font-size:clamp(2rem,6vw,4rem);
+  font-weight:900;
+  letter-spacing:.1em;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .25s;
+  text-shadow:0 0 30px currentColor;
+  z-index:20;
+}
+#judge.show{opacity:1;transition:none;}
+#judge.perfect{color:var(--gold);}
+#judge.great{color:var(--green);}
+#judge.good{color:var(--blue);}
+#judge.miss{color:var(--red);}
+
+/* combo */
+#combo-txt{
+  position:absolute;
+  bottom:22%;left:50%;
+  transform:translateX(-50%);
+  font-family:var(--hd);
+  font-size:clamp(1.2rem,3vw,2rem);
+  font-weight:900;
+  color:var(--gold);
+  letter-spacing:.15em;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .3s;
+  z-index:20;
+}
+#combo-txt.show{opacity:1;transition:none;}
+
+/* timing ring */
+#timing-ring{
+  position:absolute;
+  bottom:18%;left:50%;
+  transform:translateX(-50%);
+  width:clamp(80px,15vw,140px);
+  height:clamp(80px,15vw,140px);
+  border-radius:50%;
+  border:3px solid rgba(176,144,255,.25);
+  z-index:15;
+  pointer-events:none;
+}
+#timing-ring-inner{
+  position:absolute;inset:10px;
+  border-radius:50%;
+  border:2px solid rgba(176,144,255,.15);
+}
+
+/* Right panel */
+#panel{
+  width:clamp(180px,26vw,300px);
+  background:var(--panel);
+  border-left:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:1rem .8rem;
+  gap:.9rem;
+  backdrop-filter:blur(12px);
+  overflow:hidden;
+  position:relative;
+  z-index:10;
+}
+
+/* HUD stats */
+.stat-row{
+  display:flex;
+  gap:.6rem;
+  width:100%;
+}
+.stat{
+  flex:1;
+  background:rgba(160,130,255,.07);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:.5rem .4rem;
+  text-align:center;
+}
+.stat-label{
+  font-size:9px;
+  letter-spacing:.2em;
+  color:var(--muted);
+  display:block;
+}
+.stat-val{
+  font-family:var(--hd);
+  font-size:clamp(14px,2vw,18px);
+  font-weight:700;
+  color:var(--text);
+  display:block;
+  margin-top:.15rem;
+}
+
+/* Progress bar */
+#prog-wrap{
+  width:100%;
+  height:4px;
+  background:rgba(160,130,255,.12);
+  border-radius:2px;
+  overflow:hidden;
+}
+#prog-bar{
+  height:100%;
+  background:var(--accent);
+  border-radius:2px;
+  width:0%;
+  transition:width .15s linear;
+}
+
+/* Next pose preview */
+#preview-box{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  gap:.5rem;
+  min-height:0;
+}
+#preview-label{
+  font-size:10px;
+  letter-spacing:.3em;
+  color:var(--muted);
+}
+#preview-cv{
+  width:100%;
+  max-height:55vh;
+  object-fit:contain;
+  border-radius:10px;
+  background:rgba(160,130,255,.04);
+  border:1px solid var(--border);
+}
+#pose-name{
+  font-family:var(--hd);
+  font-size:clamp(10px,1.6vw,13px);
+  font-weight:700;
+  letter-spacing:.15em;
+  color:var(--accent);
+  text-align:center;
+}
+
+/* Timing bar (falls from top of panel) */
+#timing-bar-wrap{
+  width:100%;
+  height:clamp(6px,1.2vw,10px);
+  background:rgba(255,255,255,.05);
+  border-radius:5px;
+  overflow:hidden;
+  position:relative;
+}
+#timing-bar{
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:100%;
+  background:var(--accent);
+  border-radius:5px;
+  transform-origin:right;
+  transform:scaleX(1);
+  transition:none;
+}
+#timing-hint{
+  font-size:9px;
+  letter-spacing:.15em;
+  color:var(--muted);
+  text-align:center;
+}
+
+/* detection indicator */
+#det-dot{
+  position:absolute;top:8px;left:8px;
+  width:8px;height:8px;
+  border-radius:50%;
+  background:var(--red);
+  z-index:30;
+  transition:background .3s;
+}
+#det-dot.on{background:var(--green);}
+
+/* score feed */
+#score-feed{
+  font-size:clamp(10px,1.6vw,12px);
+  color:var(--muted);
+  text-align:center;
+  line-height:1.6;
+  min-height:2.5rem;
+}
+
+/* ──────────────── RESULT ──────────────── */
+#s-result{
+  gap:1.2rem;
+  background:var(--bg);
+}
+#s-result::before{
+  content:'';position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(0deg,transparent,transparent 56px,rgba(100,80,220,.05) 56px,rgba(100,80,220,.05) 57px),
+    repeating-linear-gradient(90deg,transparent,transparent 56px,rgba(100,80,220,.05) 56px,rgba(100,80,220,.05) 57px);
+  pointer-events:none;
+}
+
+#rank-letter{
+  font-family:var(--hd);
+  font-size:clamp(4rem,15vw,8rem);
+  font-weight:900;
+  line-height:1;
+  animation:rankIn .5s cubic-bezier(.17,.67,.3,1.4) both;
+}
+@keyframes rankIn{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+#rank-letter.S{color:var(--gold);}
+#rank-letter.A{color:var(--green);}
+#rank-letter.B{color:var(--blue);}
+#rank-letter.C{color:orange;}
+#rank-letter.D{color:var(--red);}
+
+#result-detail{
+  font-size:clamp(11px,1.8vw,14px);
+  color:#7070b8;
+  text-align:center;
+  line-height:2;
+}
+#result-detail strong{color:var(--text);}
+
+.btn-row{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center;}
+
+/* ──────────────── MOBILE ──────────────── */
+@media(max-width:600px){
+  #s-game{flex-direction:column;}
+  #panel{
+    width:100%;
+    flex-direction:row;
+    flex-wrap:wrap;
+    padding:.5rem;
+    gap:.4rem;
+    border-left:none;
+    border-top:1px solid var(--border);
+    height:auto;
+    max-height:38vh;
+  }
+  .stat-row{width:auto;flex:0 0 auto;}
+  #preview-box{
+    flex-direction:row;
+    flex:1;
+    min-width:0;
+    justify-content:flex-start;
+    min-height:unset;
+  }
+  #preview-cv{max-height:100%;width:auto;max-width:120px;}
+  #prog-wrap{width:100%;}
+  #score-feed{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ START ═══════════════ -->
+<div id="s-start" class="screen on">
+  <div class="logo">DANCE RUSH</div>
+  <div class="logo-sub">MEDIAPIPE · POSE RHYTHM GAME</div>
+
+  <div class="card">
+    <h3>HOW TO PLAY</h3>
+    <p>
+      화면에 표시되는 <strong style="color:var(--accent)">다음 동작</strong>을 미리 확인하세요.<br>
+      타이밍 바가 0에 도달하는 순간 그 자세를 취하세요.<br>
+      <strong style="color:var(--gold)">타이밍이 정확할수록</strong> 더 높은 점수!<br><br>
+      카메라 권한을 허용해야 합니다.
+    </p>
+  </div>
+
+  <div style="display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center">
+    <button class="btn" onclick="initGame(30)">30초 플레이</button>
+    <button class="btn g" onclick="initGame(60)">60초 플레이</button>
+  </div>
+
+  <div style="font-size:11px;color:var(--muted);letter-spacing:.1em;text-align:center">
+    Chrome / Safari · 카메라 필요 · 인터넷 연결 필요
+  </div>
+</div>
+
+<!-- ═══════════════ GAME ═══════════════ -->
+<div id="s-game" class="screen">
+  <div id="cam-area">
+    <video id="vid" autoplay muted playsinline></video>
+    <canvas id="pose-cv"></canvas>
+
+    <div id="det-dot"></div>
+
+    <div id="timing-ring"><div id="timing-ring-inner"></div></div>
+    <div id="judge"></div>
+    <div id="combo-txt"></div>
+
+    <div id="countdown"><div id="countdown-num">3</div></div>
+  </div>
+
+  <div id="panel">
+    <div class="stat-row">
+      <div class="stat">
+        <span class="stat-label">SCORE</span>
+        <span class="stat-val" id="h-score">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">COMBO</span>
+        <span class="stat-val" id="h-combo">0</span>
+      </div>
+    </div>
+
+    <div id="prog-wrap"><div id="prog-bar"></div></div>
+
+    <div id="preview-box">
+      <div id="preview-label">NEXT POSE</div>
+      <canvas id="preview-cv"></canvas>
+      <div id="pose-name">—</div>
+    </div>
+
+    <div id="timing-bar-wrap">
+      <div id="timing-bar"></div>
+    </div>
+    <div id="timing-hint">위 자세를 취하세요!</div>
+
+    <div id="score-feed"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ RESULT ═══════════════ -->
+<div id="s-result" class="screen">
+  <div id="rank-letter">S</div>
+  <div id="result-detail"></div>
+  <div class="btn-row">
+    <button class="btn" onclick="goStart()">메뉴로</button>
+    <button class="btn g" id="retry-btn" onclick="retryGame()">다시 하기</button>
+  </div>
+</div>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js" crossorigin="anonymous"></script>
+
+<script>
+// ═══════════════════════════════════════════
+//  POSE DEFINITIONS
+//  각 포즈는 주요 관절의 "이상적인 방향 벡터"로 정의
+//  비교는 코사인 유사도 기반
+// ═══════════════════════════════════════════
+const POSES = [
+  {
+    name: 'T-POSE',
+    desc: '양팔을 수평으로 펼치세요',
+    color: '#b090ff',
+    draw(ctx, cx, cy, s) {
+      // head
+      circle(ctx, cx, cy - s*.55, s*.13, '#b090ff');
+      // body
+      line(ctx, cx, cy-.42*s, cx, cy+.1*s, '#b090ff', 3);
+      // arms T
+      line(ctx, cx-.52*s, cy-.28*s, cx+.52*s, cy-.28*s, '#b090ff', 5);
+      // legs
+      line(ctx, cx, cy+.1*s, cx-.22*s, cy+.62*s, '#9840dd', 5);
+      line(ctx, cx, cy+.1*s, cx+.22*s, cy+.62*s, '#9840dd', 5);
+    },
+    // key landmarks: [lShoulder,lElbow,lWrist, rShoulder,rElbow,rWrist]
+    check(lm) {
+      // arms should be roughly horizontal (wrist near shoulder height)
+      const ls = lm[11], le = lm[13], lw = lm[15];
+      const rs = lm[12], re = lm[14], rw = lm[16];
+      if (!ls||!le||!lw||!rs||!re||!rw) return 0;
+      const lScore = 1 - Math.min(Math.abs(lw.y - ls.y) * 3, 1);
+      const rScore = 1 - Math.min(Math.abs(rw.y - rs.y) * 3, 1);
+      const lExt   = 1 - Math.min(Math.abs(lw.x - ls.x) * 1.5, 1) * .3;
+      const rExt   = 1 - Math.min(Math.abs(rw.x - rs.x) * 1.5, 1) * .3;
+      return (lScore + rScore + lExt + rExt) / 4;
+    }
+  },
+  {
+    name: 'RIGHT ARM UP',
+    desc: '오른팔을 위로 올리세요',
+    color: '#40c8ff',
+    draw(ctx, cx, cy, s) {
+      circle(ctx, cx, cy - s*.55, s*.13, '#40c8ff');
+      line(ctx, cx, cy-.42*s, cx, cy+.1*s, '#40c8ff', 3);
+      // right arm up
+      line(ctx, cx+.08*s, cy-.35*s, cx+.14*s, cy-.78*s, '#40c8ff', 5);
+      line(ctx, cx+.14*s, cy-.78*s, cx+.18*s, cy-1.05*s, '#40c8ff', 5);
+      // left arm down
+      line(ctx, cx-.08*s, cy-.35*s, cx-.3*s, cy+.0*s, '#40c8ff', 5);
+      line(ctx, cx-.3*s,  cy+.0*s,  cx-.36*s,cy+.32*s, '#40c8ff', 5);
+      line(ctx, cx, cy+.1*s, cx-.22*s, cy+.62*s, '#2a88cc', 5);
+      line(ctx, cx, cy+.1*s, cx+.22*s, cy+.62*s, '#2a88cc', 5);
+    },
+    check(lm) {
+      const rs = lm[12], re = lm[14], rw = lm[16];
+      const ls = lm[11], lw = lm[15];
+      if (!rs||!re||!rw||!ls||!lw) return 0;
+      // right wrist above right shoulder
+      const rUp = Math.max(0, (rs.y - rw.y) * 4);
+      // left wrist below left shoulder
+      const lDown = Math.max(0, (lw.y - ls.y) * 4);
+      return Math.min((rUp + lDown) / 2, 1);
+    }
+  },
+  {
+    name: 'LEFT ARM UP',
+    desc: '왼팔을 위로 올리세요',
+    color: '#3fffa0',
+    draw(ctx, cx, cy, s) {
+      circle(ctx, cx, cy - s*.55, s*.13, '#3fffa0');
+      line(ctx, cx, cy-.42*s, cx, cy+.1*s, '#3fffa0', 3);
+      // left arm up
+      line(ctx, cx-.08*s, cy-.35*s, cx-.14*s, cy-.78*s, '#3fffa0', 5);
+      line(ctx, cx-.14*s, cy-.78*s, cx-.18*s, cy-1.05*s, '#3fffa0', 5);
+      // right arm down
+      line(ctx, cx+.08*s, cy-.35*s, cx+.3*s, cy+.0*s, '#3fffa0', 5);
+      line(ctx, cx+.3*s,  cy+.0*s,  cx+.36*s,cy+.32*s, '#3fffa0', 5);
+      line(ctx, cx, cy+.1*s, cx-.22*s, cy+.62*s, '#28cc80', 5);
+      line(ctx, cx, cy+.1*s, cx+.22*s, cy+.62*s, '#28cc80', 5);
+    },
+    check(lm) {
+      const ls = lm[11], le = lm[13], lw = lm[15];
+      const rs = lm[12], rw = lm[16];
+      if (!ls||!le||!lw||!rs||!rw) return 0;
+      const lUp   = Math.max(0, (ls.y - lw.y) * 4);
+      const rDown = Math.max(0, (rw.y - rs.y) * 4);
+      return Math.min((lUp + rDown) / 2, 1);
+    }
+  },
+  {
+    name: 'BOTH ARMS UP',
+    desc: '양팔을 위로 올리세요',
+    color: '#ffd060',
+    draw(ctx, cx, cy, s) {
+      circle(ctx, cx, cy - s*.55, s*.13, '#ffd060');
+      line(ctx, cx, cy-.42*s, cx, cy+.1*s, '#ffd060', 3);
+      line(ctx, cx+.08*s, cy-.35*s, cx+.2*s, cy-.8*s, '#ffd060', 5);
+      line(ctx, cx+.2*s,  cy-.8*s,  cx+.22*s,cy-1.1*s,'#ffd060', 5);
+      line(ctx, cx-.08*s, cy-.35*s, cx-.2*s, cy-.8*s, '#ffd060', 5);
+      line(ctx, cx-.2*s,  cy-.8*s,  cx-.22*s,cy-1.1*s,'#ffd060', 5);
+      line(ctx, cx, cy+.1*s, cx-.22*s, cy+.62*s, '#c8a040', 5);
+      line(ctx, cx, cy+.1*s, cx+.22*s, cy+.62*s, '#c8a040', 5);
+    },
+    check(lm) {
+      const ls = lm[11], lw = lm[15];
+      const rs = lm[12], rw = lm[16];
+      if (!ls||!lw||!rs||!rw) return 0;
+      const lUp = Math.max(0, (ls.y - lw.y) * 4);
+      const rUp = Math.max(0, (rs.y - rw.y) * 4);
+      return Math.min((lUp + rUp) / 2, 1);
+    }
+  },
+  {
+    name: 'SQUAT',
+    desc: '무릎을 굽혀 스쿼트하세요',
+    color: '#ff8844',
+    draw(ctx, cx, cy, s) {
+      circle(ctx, cx, cy - s*.2, s*.13, '#ff8844');
+      line(ctx, cx, cy-.07*s, cx, cy+.28*s, '#ff8844', 3);
+      // arms out for balance
+      line(ctx, cx-.08*s, cy+.0*s, cx-.42*s, cy+.08*s, '#ff8844', 5);
+      line(ctx, cx+.08*s, cy+.0*s, cx+.42*s, cy+.08*s, '#ff8844', 5);
+      // bent legs
+      line(ctx, cx-.08*s, cy+.28*s, cx-.28*s, cy+.52*s, '#cc6030', 5);
+      line(ctx, cx-.28*s, cy+.52*s, cx-.14*s, cy+.72*s, '#cc6030', 5);
+      line(ctx, cx+.08*s, cy+.28*s, cx+.28*s, cy+.52*s, '#cc6030', 5);
+      line(ctx, cx+.28*s, cy+.52*s, cx+.14*s, cy+.72*s, '#cc6030', 5);
+    },
+    check(lm) {
+      const lh = lm[23], lk = lm[25], la = lm[27];
+      const rh = lm[24], rk = lm[26], ra = lm[28];
+      if (!lh||!lk||!la||!rh||!rk||!ra) return 0;
+      // knees should be well below hips
+      const lBend = Math.max(0, (lk.y - lh.y) * 4);
+      const rBend = Math.max(0, (rk.y - rh.y) * 4);
+      return Math.min((lBend + rBend) / 2, 1);
+    }
+  },
+  {
+    name: 'HANDS ON HIPS',
+    desc: '양손을 허리에 올리세요',
+    color: '#ff4488',
+    draw(ctx, cx, cy, s) {
+      circle(ctx, cx, cy - s*.55, s*.13, '#ff4488');
+      line(ctx, cx, cy-.42*s, cx, cy+.1*s, '#ff4488', 3);
+      // arms bent to hips
+      line(ctx, cx-.08*s, cy-.3*s, cx-.3*s,  cy-.1*s, '#ff4488', 5);
+      line(ctx, cx-.3*s,  cy-.1*s, cx-.22*s, cy+.08*s,'#ff4488', 5);
+      line(ctx, cx+.08*s, cy-.3*s, cx+.3*s,  cy-.1*s, '#ff4488', 5);
+      line(ctx, cx+.3*s,  cy-.1*s, cx+.22*s, cy+.08*s,'#ff4488', 5);
+      line(ctx, cx, cy+.1*s, cx-.22*s, cy+.62*s, '#cc2266', 5);
+      line(ctx, cx, cy+.1*s, cx+.22*s, cy+.62*s, '#cc2266', 5);
+    },
+    check(lm) {
+      const ls = lm[11], lw = lm[15], lh = lm[23];
+      const rs = lm[12], rw = lm[16], rh = lm[24];
+      if (!ls||!lw||!lh||!rs||!rw||!rh) return 0;
+      // wrists near hip height
+      const lNear = 1 - Math.min(Math.abs(lw.y - lh.y) * 5, 1);
+      const rNear = 1 - Math.min(Math.abs(rw.y - rh.y) * 5, 1);
+      return (lNear + rNear) / 2;
+    }
+  },
+];
+
+// draw helpers
+function line(ctx,x1,y1,x2,y2,color,w=3){
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+  ctx.strokeStyle=color;ctx.lineWidth=w;ctx.lineCap='round';ctx.stroke();
+}
+function circle(ctx,x,y,r,color){
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fillStyle=color;ctx.fill();
+}
+
+// ═══════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════
+let mpPose = null, mpCamera = null;
+let latestLandmarks = null;
+let poseDetected = false;
+
+let gameRunning = false;
+let gameDuration = 30000;
+let gameStart = 0;
+let gameTimer = null;
+
+let score = 0, combo = 0, maxCombo = 0;
+let counts = {perfect:0,great:0,good:0,miss:0};
+let lastRetryDur = 30000;
+
+// Beatmap: list of {time, poseIdx, judged}
+let beatmap = [];
+let beatmapIdx = 0;
+let currentBeat = null; // the beat we're waiting to judge
+let nextPreview = null; // the one after current
+
+const BEAT_INTERVAL = 2200; // ms between beats (slower for body pose)
+const WINDOWS = {perfect:300, great:600, good:1000};
+const SCORE   = {perfect:1000, great:700, good:400, miss:0};
+
+// ═══════════════════════════════════════════
+//  MediaPipe INIT
+// ═══════════════════════════════════════════
+async function initMediaPipe() {
+  const vid = document.getElementById('vid');
+  const poseCv = document.getElementById('pose-cv');
+  const poseCtx = poseCv.getContext('2d');
+
+  // try to get camera
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user', width:{ideal:1280}, height:{ideal:720}},
+      audio:false
+    });
+  } catch(e) {
+    alert('카메라 접근 권한이 필요합니다.\n브라우저 설정에서 카메라를 허용해주세요.');
+    goStart();
+    return false;
+  }
+  vid.srcObject = stream;
+  await new Promise(r => vid.onloadedmetadata = r);
+
+  function resizeCv() {
+    poseCv.width  = vid.videoWidth  || 640;
+    poseCv.height = vid.videoHeight || 480;
+  }
+  resizeCv();
+  window.addEventListener('resize', resizeCv);
+
+  mpPose = new Pose({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${f}`
+  });
+  mpPose.setOptions({
+    modelComplexity:1,
+    smoothLandmarks:true,
+    enableSegmentation:false,
+    minDetectionConfidence:0.5,
+    minTrackingConfidence:0.5,
+  });
+  mpPose.onResults(results => {
+    poseCtx.clearRect(0,0,poseCv.width,poseCv.height);
+    if (results.poseLandmarks) {
+      latestLandmarks = results.poseLandmarks;
+      poseDetected = true;
+      document.getElementById('det-dot').classList.add('on');
+      drawConnections(poseCtx, results.poseLandmarks, POSE_CONNECTIONS,
+        {color:'rgba(176,144,255,0.45)', lineWidth:3});
+      drawLandmarks(poseCtx, results.poseLandmarks,
+        {color:'rgba(255,255,255,0.7)', lineWidth:1, radius:4});
+    } else {
+      latestLandmarks = null;
+      poseDetected = false;
+      document.getElementById('det-dot').classList.remove('on');
+    }
+  });
+
+  mpCamera = new Camera(vid, {
+    onFrame: async () => { await mpPose.send({image: vid}); },
+    width:1280, height:720
+  });
+  mpCamera.start();
+  return true;
+}
+
+// MediaPipe connection list
+const POSE_CONNECTIONS = [
+  [11,12],[11,13],[13,15],[12,14],[14,16],
+  [11,23],[12,24],[23,24],[23,25],[24,26],[25,27],[26,28],
+  [27,29],[28,30],[29,31],[30,32],
+];
+
+// ═══════════════════════════════════════════
+//  GAME FLOW
+// ═══════════════════════════════════════════
+async function initGame(dur) {
+  gameDuration = dur * 1000;
+  lastRetryDur = dur;
+  showScreen('s-game');
+
+  // show countdown
+  const cdEl  = document.getElementById('countdown');
+  const cdNum = document.getElementById('countdown-num');
+  cdEl.style.display = 'flex';
+
+  const ok = await initMediaPipe();
+  if (!ok) return;
+
+  // countdown 3..2..1..GO
+  for (let n of [3,2,1,'GO!']) {
+    cdNum.textContent = n;
+    await sleep(900);
+  }
+  cdEl.style.display = 'none';
+
+  startGame();
+}
+
+function startGame() {
+  score=0; combo=0; maxCombo=0;
+  counts={perfect:0,great:0,good:0,miss:0};
+  gameRunning = true;
+  gameStart = performance.now();
+
+  // generate beatmap
+  beatmap = [];
+  let t = 1500;
+  while (t < gameDuration - 1000) {
+    beatmap.push({
+      time: t,
+      poseIdx: Math.floor(Math.random() * POSES.length),
+      judged: false,
+    });
+    t += BEAT_INTERVAL + (Math.random() * 400 - 200);
+  }
+  beatmapIdx = 0;
+  currentBeat = null;
+  nextPreview = beatmap[0] || null;
+
+  updateHUD();
+  drawPreview(nextPreview ? nextPreview.poseIdx : 0);
+
+  requestAnimationFrame(gameLoop);
+}
+
+function gameLoop(ts) {
+  if (!gameRunning) return;
+  const elapsed = ts - gameStart;
+
+  // progress
+  const pct = Math.min(elapsed / gameDuration, 1);
+  document.getElementById('prog-bar').style.width = (pct*100).toFixed(1)+'%';
+
+  // advance beatmap
+  if (!currentBeat && nextPreview && elapsed >= nextPreview.time - 2000) {
+    currentBeat = nextPreview;
+    beatmapIdx++;
+    nextPreview = beatmap[beatmapIdx] || null;
+    document.getElementById('pose-name').textContent = POSES[currentBeat.poseIdx].name;
+    document.getElementById('timing-hint').textContent = POSES[currentBeat.poseIdx].desc;
+    // preload next preview
+    if (nextPreview) {
+      setTimeout(() => drawPreview(nextPreview.poseIdx), 50);
+    }
+  }
+
+  // timing bar animation
+  if (currentBeat) {
+    const timeToHit = currentBeat.time - elapsed;
+    const barPct = Math.max(0, timeToHit / 2000);
+    document.getElementById('timing-bar').style.transform = `scaleX(${barPct.toFixed(3)})`;
+
+    // auto-judge if missed
+    if (!currentBeat.judged && elapsed > currentBeat.time + WINDOWS.good + 200) {
+      judge('miss');
+    }
+  }
+
+  if (elapsed >= gameDuration) {
+    endGame();
+    return;
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// called continuously by MediaPipe — also auto-evaluates on beat hit
+function evaluatePose() {
+  if (!currentBeat || currentBeat.judged || !latestLandmarks) return;
+  const elapsed = performance.now() - gameStart;
+  const diff = Math.abs(elapsed - currentBeat.time);
+
+  // only evaluate within window
+  if (diff > WINDOWS.good + 200) return;
+
+  const pose = POSES[currentBeat.poseIdx];
+  const similarity = pose.check(latestLandmarks);
+
+  // need decent pose match AND be within timing window
+  if (similarity < 0.35) return;
+
+  let grade;
+  if (diff <= WINDOWS.perfect && similarity >= 0.75) grade = 'perfect';
+  else if (diff <= WINDOWS.great && similarity >= 0.55) grade = 'great';
+  else if (similarity >= 0.40) grade = 'good';
+  else return;
+
+  judge(grade);
+}
+
+// run pose eval every 80ms during game
+let evalInterval = null;
+
+function judge(grade) {
+  if (!currentBeat || currentBeat.judged) return;
+  currentBeat.judged = true;
+
+  counts[grade]++;
+  if (grade !== 'miss') {
+    combo++;
+    if (combo > maxCombo) maxCombo = combo;
+    const mult = 1 + Math.min(combo / 80, 1.5);
+    score += Math.round(SCORE[grade] * mult);
+  } else {
+    combo = 0;
+  }
+
+  updateHUD();
+  showJudge(grade);
+
+  // move to next
+  currentBeat = null;
+  if (nextPreview) drawPreview(nextPreview.poseIdx);
+  document.getElementById('timing-bar').style.transform = 'scaleX(1)';
+}
+
+// ═══════════════════════════════════════════
+//  PREVIEW CANVAS
+// ═══════════════════════════════════════════
+function drawPreview(poseIdx) {
+  const cv = document.getElementById('preview-cv');
+  const ctx = cv.getContext('2d');
+  const w = cv.parentElement.clientWidth - 20;
+  const h = Math.min(cv.parentElement.clientHeight * .65, 260);
+  cv.width  = Math.max(w, 120);
+  cv.height = Math.max(h, 120);
+
+  ctx.clearRect(0,0,cv.width,cv.height);
+
+  const cx = cv.width/2;
+  const cy = cv.height * .52;
+  const s  = Math.min(cv.width, cv.height) * .42;
+
+  const pose = POSES[poseIdx];
+
+  // background glow
+  ctx.save();
+  ctx.globalAlpha = .12;
+  ctx.fillStyle = pose.color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, s*.9, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  pose.draw(ctx, cx, cy, s);
+  document.getElementById('pose-name').textContent = pose.name;
+}
+
+// ═══════════════════════════════════════════
+//  VISUAL FEEDBACK
+// ═══════════════════════════════════════════
+let judgeTimeout = null;
+let comboTimeout = null;
+
+function showJudge(grade) {
+  const el = document.getElementById('judge');
+  const labels = {perfect:'PERFECT!', great:'GREAT', good:'GOOD', miss:'MISS'};
+  el.textContent = labels[grade];
+  el.className = `show ${grade}`;
+  if (judgeTimeout) clearTimeout(judgeTimeout);
+  judgeTimeout = setTimeout(() => { el.className = grade; }, 700);
+
+  const cd = document.getElementById('combo-txt');
+  if (grade !== 'miss' && combo >= 2) {
+    cd.textContent = `${combo} COMBO`;
+    cd.classList.add('show');
+    if (comboTimeout) clearTimeout(comboTimeout);
+    comboTimeout = setTimeout(() => cd.classList.remove('show'), 800);
+  } else if (grade === 'miss') {
+    cd.classList.remove('show');
+  }
+
+  // score feed
+  const feed = document.getElementById('score-feed');
+  const pts = grade !== 'miss' ? `+${Math.round(SCORE[grade] * (1+Math.min(combo/80,1.5)))}` : '×';
+  const colors = {perfect:'var(--gold)',great:'var(--green)',good:'var(--blue)',miss:'var(--red)'};
+  feed.innerHTML = `<span style="color:${colors[grade]};font-family:var(--hd);font-size:16px">${pts}</span>`;
+}
+
+function updateHUD() {
+  document.getElementById('h-score').textContent = score.toLocaleString();
+  document.getElementById('h-combo').textContent = combo;
+}
+
+// ═══════════════════════════════════════════
+//  END GAME
+// ═══════════════════════════════════════════
+function endGame() {
+  gameRunning = false;
+  clearInterval(evalInterval);
+  if (mpCamera) { mpCamera.stop(); mpCamera = null; }
+
+  const total = counts.perfect+counts.great+counts.good+counts.miss||1;
+  const acc = Math.round((counts.perfect*100 + counts.great*70 + counts.good*40) / (total*100) * 100);
+  let rank = acc>=95?'S':acc>=85?'A':acc>=70?'B':acc>=50?'C':'D';
+
+  const rl = document.getElementById('rank-letter');
+  rl.textContent = rank;
+  rl.className = rank;
+
+  document.getElementById('result-detail').innerHTML = `
+    <strong>SCORE</strong> ${score.toLocaleString()}<br>
+    <strong>ACCURACY</strong> ${acc}%<br>
+    <strong>MAX COMBO</strong> ${maxCombo}<br><br>
+    <span style="font-size:12px">
+      PERFECT <strong style="color:var(--gold)">${counts.perfect}</strong> &nbsp;
+      GREAT <strong style="color:var(--green)">${counts.great}</strong> &nbsp;
+      GOOD <strong style="color:var(--blue)">${counts.good}</strong> &nbsp;
+      MISS <strong style="color:var(--red)">${counts.miss}</strong>
+    </span>
+  `;
+
+  showScreen('s-result');
+}
+
+// ═══════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+function goStart() {
+  gameRunning = false;
+  clearInterval(evalInterval);
+  if (mpCamera) { try{mpCamera.stop();}catch(e){} mpCamera=null; }
+  if (mpPose)   { try{mpPose.close();}catch(e){} mpPose=null; }
+  const vid = document.getElementById('vid');
+  if (vid.srcObject) { vid.srcObject.getTracks().forEach(t=>t.stop()); vid.srcObject=null; }
+  showScreen('s-start');
+}
+
+function retryGame() {
+  goStart();
+  setTimeout(() => initGame(lastRetryDur), 100);
+}
+
+// eval loop — started when game runs
+setInterval(() => { if (gameRunning) evaluatePose(); }, 80);
+
+// ═══════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>
